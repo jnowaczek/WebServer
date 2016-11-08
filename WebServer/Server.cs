@@ -30,7 +30,7 @@ namespace WebServer
             try
             {
                 var port = 8080;
-                tcpListener = new TcpListener(IPAddress.Loopback, port);
+                tcpListener = new TcpListener(IPAddress.Any, port);
                 tcpListener.Start();
                 
                 while (runServer)
@@ -42,8 +42,7 @@ namespace WebServer
             }
             catch (Exception e)
             {
-                ConsoleTextEventArgs args = new ConsoleTextEventArgs("Error starting server: " + e.Message);
-                OnConsoleTextUpdate(args);
+                DoConsoleTextUpdate("Error starting server: " + e.Message);
             }
         }
 
@@ -57,25 +56,41 @@ namespace WebServer
             var tcpClient = (TcpClient)obj;
             NetworkStream networkStream = tcpClient.GetStream();
 
-            using (StreamReader reader = new StreamReader(networkStream))
+            using (StreamReader networkReader = new StreamReader(networkStream))
             {
-                string response = reader.ReadToEnd();
+                string request = networkReader.ReadLine();
+                DoConsoleTextUpdate(request);
 
-                using (StreamWriter writer = new StreamWriter(networkStream))
+                String html;
+
+                using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory + "\\index.html"))
                 {
-                    writer.Write("I wonder what happens now");
-                    writer.Flush();
+                    html = fileReader.ReadToEnd();
+                }
+
+                int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
+
+                using (StreamWriter networkWriter = new StreamWriter(networkStream))
+                {
+                    StringBuilder builder = new StringBuilder();
+                    builder.Append("HTTP/1.1 200 OK \r\n");
+                    builder.Append("Connection: keep-alive \r\n");
+                    builder.Append("Content-Type: text/html \r\n");
+                    builder.Append("Content-Length: ").Append(contentLength).Append(" \r\n");
+
+                    networkWriter.Write("HTTP/1.1 200 OK");
+                    networkWriter.Flush();
 
                     networkStream.Close();
                 }
             }
         }
 
-        protected virtual void OnConsoleTextUpdate(ConsoleTextEventArgs e)
+        protected virtual void DoConsoleTextUpdate(String s)
         {
             if (ConsoleTextUpdate != null)
             {
-                ConsoleTextUpdate(this, e);
+                ConsoleTextUpdate(this, new ConsoleTextEventArgs(s));
             }
         }
     }
