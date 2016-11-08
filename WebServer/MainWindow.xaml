@@ -14,10 +14,10 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="1*"/>
-            <RowDefinition Height="34"/>
+            <RowDefinition Height="37"/>
         </Grid.RowDefinitions>
-        <TextBox HorizontalAlignment="Stretch" Height="Auto" TextWrapping="Wrap" VerticalAlignment="Stretch" Width="Auto" Margin="11,11,11,11" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3"/>
-        <Button Content="Start Server" HorizontalAlignment="Right" Margin="0,0,0,11" Grid.Row="1" Grid.Column="0" Width="75" Height="23" VerticalAlignment="Bottom"/>
-        <Button Content="Button" HorizontalAlignment="Left" Margin="0,0,0,11" Grid.Row="1" Grid.Column="2" VerticalAlignment="Bottom" Width="75" Height="23"/>
+        <TextBox HorizontalAlignment="Stretch" Height="Auto" TextWrapping="Wrap" VerticalAlignment="Stretch" Width="Auto" Margin="11,11,11,11" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Name="outputConsoleTextBox"/>
+        <Button Content="Start Server" HorizontalAlignment="Right" Margin="0,0,0,14" Grid.Row="1" Grid.Column="0" Width="84" VerticalAlignment="Bottom" Click="startServerButton_Click"  Name="startServerButton"/>
+        <Button Content="Stop Server" HorizontalAlignment="Left" Margin="0,0,0,14" Grid.Row="1" Grid.Column="2" VerticalAlignment="Bottom" Width="84" Click="stopServerButton_Click" Name="stopServerButton"/>
     </Grid>
 </Window>
