@@ -1,0 +1,18 @@
+<html>
+<head>
+<title>Test Page</title>
+<style>
+* {
+	font-family: Calibri,Verdana,sans-serif;
+	font-size: 1em;
+}
+</style>
+</head>
+<body>
+This is a page served by local HTTP server. It is currently <span id="date"><span/>
+<script>
+var d = new Date();
+document.getElementById("date").innerHTML = d;
+</script>
+</body>
+</html>
