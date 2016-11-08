@@ -75,10 +75,15 @@ namespace WebServer
                     StringBuilder builder = new StringBuilder();
                     builder.Append("HTTP/1.1 200 OK \r\n");
                     builder.Append("Connection: keep-alive \r\n");
-                    builder.Append("Content-Type: text/html \r\n");
+                    builder.Append("Content-Type: text/html; charset=utf-8 \r\n");
                     builder.Append("Content-Length: ").Append(contentLength).Append(" \r\n");
+                    // builder.Append(html);
 
-                    networkWriter.Write("HTTP/1.1 200 OK");
+                    String responseHeader = builder.ToString();
+
+                    networkWriter.WriteLine(responseHeader);
+                    networkWriter.Flush();
+                    networkWriter.WriteLine(html);
                     networkWriter.Flush();
 
                     networkStream.Close();
