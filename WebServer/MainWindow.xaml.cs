@@ -35,7 +35,10 @@ namespace WebServer
         Server PrepareServer()
         {
             var server = new Server();
-            server.ConsoleTextUpdate += new ConsoleTextUpdateEventHandler(ConsoleText_Update);
+            server.ConsoleTextUpdate += (s, e) => Dispatcher.Invoke((Action)delegate()
+            {
+                outputConsoleTextBox.Text += e.message + "\r\n";
+            });
             return server;
         }
 
@@ -43,11 +46,6 @@ namespace WebServer
         {
             var server = PrepareServer();
             return Task.Run(() => { server.StartServer(); });
-        }
-
-        private void ConsoleText_Update(object sender, ConsoleTextEventArgs e)
-        {
-            outputConsoleTextBox.Text += e.message + "\r\n";
         }
 
         private void stopServerButton_Click(object sender, RoutedEventArgs e)
