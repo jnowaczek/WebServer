@@ -58,29 +58,63 @@ namespace WebServer
                 string request = networkReader.ReadLine();
                 DoConsoleTextUpdate(request);
 
-                String html;
+                String html = null;
 
-                using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory + "\\index.html"))
+                String[] requestComponents = request.Split(' ');
+
+                StringBuilder builder = new StringBuilder();
+
+                if (requestComponents[0] != "GET")
                 {
-                    html = fileReader.ReadToEnd();
+                    builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
+
                 }
+                else if (requestComponents[1].Equals("/") || File.Exists(System.AppDomain.CurrentDomain.BaseDirectory + 
+                    "\\www\\" + requestComponents[1]))
+                {
+                    String file;
 
-                int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
+                    if (requestComponents[1].Equals("/"))
+                    {
+                        file = "index.html";
+                    } else
+                    {
+                        file = requestComponents[1];
+                    }
 
+                    using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory 
+                        + "\\www\\" + file))
+                    {
+                        html = fileReader.ReadToEnd();
+                    }
+
+                    int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
+
+                    builder.Append("HTTP/1.1 200 OK\r\n");
+                    builder.Append("Connection: keep-alive\r\n");
+                    builder.Append("Content-Type: text/html; charset=utf-8\r\n");
+                    builder.Append("Content-Length: ").Append(contentLength).Append("\r\n");
+                }
+                else
+                {
+                    builder.Append("HTTP/1.1 404 NOT FOUND\r\n");
+
+                    using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
+                        + "\\www\\404.html"))
+                    {
+                        html = fileReader.ReadToEnd();
+                    }
+                }
+                
                 using (StreamWriter networkWriter = new StreamWriter(networkStream))
                 {
-                    StringBuilder builder = new StringBuilder();
-                    builder.Append("HTTP/1.1 200 OK \r\n");
-                    builder.Append("Connection: keep-alive \r\n");
-                    builder.Append("Content-Type: text/html; charset=utf-8 \r\n");
-                    builder.Append("Content-Length: ").Append(contentLength).Append(" \r\n");
-                    // builder.Append(html);
-
                     String responseHeader = builder.ToString();
 
                     networkWriter.WriteLine(responseHeader);
-                    // networkWriter.Flush();
-                    networkWriter.WriteLine(html);
+                    if (html != null)
+                    {
+                        networkWriter.WriteLine(html);
+                    }
                     networkWriter.Flush();
 
                     networkStream.Close();
