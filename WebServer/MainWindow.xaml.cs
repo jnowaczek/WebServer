@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,9 +21,38 @@ namespace WebServer
     /// </summary>
     public partial class MainWindow : Window
     {
+        
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private async void startServerButton_Click(object sender, RoutedEventArgs e)
+        {
+            await startServer();
+        }
+
+        Server PrepareServer()
+        {
+            var server = new Server();
+            server.ConsoleTextUpdate += new ConsoleTextUpdateEventHandler(ConsoleText_Update);
+            return server;
+        }
+
+        Task startServer()
+        {
+            var server = PrepareServer();
+            return Task.Run(() => { server.StartServer(); });
+        }
+
+        private void ConsoleText_Update(object sender, ConsoleTextEventArgs e)
+        {
+            outputConsoleTextBox.Text += e.message + "\r\n";
+        }
+
+        private void stopServerButton_Click(object sender, RoutedEventArgs e)
+        {
+            outputConsoleTextBox.Text += "Not implemented \r\n";
         }
     }
 }
