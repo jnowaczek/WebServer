@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Windows.Controls;
 
 namespace WebServer
 {
@@ -82,7 +79,7 @@ namespace WebServer
                     String responseHeader = builder.ToString();
 
                     networkWriter.WriteLine(responseHeader);
-                    networkWriter.Flush();
+                    // networkWriter.Flush();
                     networkWriter.WriteLine(html);
                     networkWriter.Flush();
 
