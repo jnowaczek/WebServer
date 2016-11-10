@@ -17,10 +17,10 @@ namespace WebServer
 
         // Register event provider
         public event ConsoleTextUpdateEventHandler ConsoleTextUpdate;
-        
+
         public Server()
         {
-            
+
         }
 
         public void StartServer()
@@ -28,9 +28,11 @@ namespace WebServer
             try
             {
                 var port = 8080;
+                var totalThreads = 0;
+
                 tcpListener = new TcpListener(IPAddress.Any, port);
                 tcpListener.Start();
-                
+
                 while (runServer)
                 {
                     tcpClient = tcpListener.AcceptTcpClient();
@@ -40,6 +42,17 @@ namespace WebServer
                     */
                     ThreadPool.QueueUserWorkItem(AcceptTcpClient, tcpClient);
 
+                    int maxThreads;
+                    int availableThreads;
+                    // Apparently there's no way to discard an out variable you don't want
+                    int dontCare;
+
+                    ThreadPool.GetMaxThreads(out maxThreads, out dontCare);
+                    ThreadPool.GetAvailableThreads(out availableThreads, out dontCare);
+
+                    totalThreads += 1;
+                    DoConsoleTextUpdate("Threads available in pool: + " + availableThreads + " out of " + maxThreads
+                        + " total\r\nThreads created so far: " + totalThreads);
                 }
             }
             catch (Exception e)
@@ -55,87 +68,99 @@ namespace WebServer
 
         private void AcceptTcpClient(object obj)
         {
-            var tcpClient = (TcpClient)obj;
-            NetworkStream networkStream = tcpClient.GetStream();
-
-            using (StreamReader networkReader = new StreamReader(networkStream))
+            try
             {
-                string request = networkReader.ReadLine();
-                DoConsoleTextUpdate(request);
+                var tcpClient = (TcpClient)obj;
+                NetworkStream networkStream = tcpClient.GetStream();
 
-                String html = null;
-
-                // Split request by spaces, first word is request type
-                String[] requestComponents = request.Split(' ');
-
-                StringBuilder builder = new StringBuilder();
-
-                // Return status code 501 for methods that do not work
-                if (requestComponents[0] != "GET")
+                using (StreamReader networkReader = new StreamReader(networkStream))
                 {
-                    builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
+                    string request = networkReader.ReadLine();
+                    DoConsoleTextUpdate(request);
 
-                }
-                    // Serve index.html if '/' is requested, otherwise serve the page if it exists
-                else if (requestComponents[1].Equals("/") || File.Exists(System.AppDomain.CurrentDomain.BaseDirectory + 
-                    "\\www\\" + requestComponents[1]))
-                {
-                    String file;
+                    String html = null;
 
-                    if (requestComponents[1].Equals("/"))
+                    // Split request by spaces, first word is request type
+                    if (request == null)
                     {
-                        file = "index.html";
-                    } else
+                        throw new Exception("Invalid request");
+                    }
+                    String[] requestComponents = request.Split(' ');
+
+                    StringBuilder builder = new StringBuilder();
+
+                    // Return status code 501 for methods that do not work
+                    if (requestComponents[0].Equals("GET"))
                     {
-                        file = requestComponents[1];
+                        // Serve index.html if '/' is requested, otherwise serve the page if it exists
+                        if (requestComponents[1].Equals("/"))
+                        {
+                            requestComponents[1] = "/index.html";
+                        }
+
+                        if (File.Exists(System.AppDomain.CurrentDomain.BaseDirectory + "\\www\\" + requestComponents[1]))
+                        {
+                            /* 
+                             * Read HTML file into memory, this will read non-text files but images and most other 
+                             * binary files will fail, somehow the bytes get mangled in here
+                             */
+                            using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
+                                + "\\www\\" + requestComponents[1]))
+                            {
+                                html = fileReader.ReadToEnd();
+                            }
+
+                            // Server has hardcoded Content-Type so content other than text will likely not display properly
+                            builder.Append("HTTP/1.1 200 OK\r\n");
+                        }
+                        // If the page requested doesn't exist serve the 404 page and error code.
+                        else
+                        {
+                            builder.Append("HTTP/1.1 404 NOT FOUND\r\n");
+
+                            using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
+                                + "\\www\\404.html"))
+                            {
+                                html = fileReader.ReadToEnd();
+                            }
+                        }
+
+                        // Get the content length of the HTML file (in bytes)
+                        int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
+
+                        builder.Append("Connection: keep-alive\r\n");
+                        builder.Append("Content-Type: text/html; charset=utf-8\r\n");
+                        builder.Append("Content-Length: ").Append(contentLength).Append("\r\n");
+                    }
+                    else if (requestComponents[0].Equals("POST"))
+                    {
+                        builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
+                    }
+                    else
+                    {
+                        builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
                     }
 
-                    /* 
-                     * Read HTML file into memory, this will read non-text files but images and most other 
-                     * binary files will fail, somehow the bytes get mangled in here
-                     */
-                    using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory 
-                        + "\\www\\" + file))
+                    using (StreamWriter networkWriter = new StreamWriter(networkStream))
                     {
-                        html = fileReader.ReadToEnd();
-                    }
+                        // Finalize the response header
+                        String responseHeader = builder.ToString();
 
-                    // Get the content length of the HTML file (in bytes)
-                    int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
+                        // Have to write the header before the HTML or it doesn't work
+                        networkWriter.WriteLine(responseHeader);
+                        if (html != null)
+                        {
+                            networkWriter.WriteLine(html);
+                        }
+                        networkWriter.Flush();
 
-                    // Server has hardcoded Content-Type so content other than text will likely not display properly
-                    builder.Append("HTTP/1.1 200 OK\r\n");
-                    builder.Append("Connection: keep-alive\r\n");
-                    builder.Append("Content-Type: text/html; charset=utf-8\r\n");
-                    builder.Append("Content-Length: ").Append(contentLength).Append("\r\n");
-                }
-                    // If the page requested doesn't exist serve the 404 page and error code.
-                else
-                {
-                    builder.Append("HTTP/1.1 404 NOT FOUND\r\n");
-
-                    using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
-                        + "\\www\\404.html"))
-                    {
-                        html = fileReader.ReadToEnd();
+                        networkStream.Close();
                     }
                 }
-                
-                using (StreamWriter networkWriter = new StreamWriter(networkStream))
-                {
-                    // Finalize the response header
-                    String responseHeader = builder.ToString();
-
-                    // Have to write the header before the HTML or it doesn't work
-                    networkWriter.WriteLine(responseHeader);
-                    if (html != null)
-                    {
-                        networkWriter.WriteLine(html);
-                    }
-                    networkWriter.Flush();
-
-                    networkStream.Close();
-                }
+            }
+            catch (Exception e)
+            {
+                DoConsoleTextUpdate(e.Message);
             }
         }
 
@@ -143,7 +168,7 @@ namespace WebServer
          * Helper method for passing text to the console. Since the methods that need to write text to the console
          * are in different threads, they cannot directly modify the Text attribute of the TextBox control. The
          * way around this is to use events (just like the button click events) to pass messages between threads.
-        */ 
+        */
         protected virtual void DoConsoleTextUpdate(String s)
         {
             if (ConsoleTextUpdate != null)
