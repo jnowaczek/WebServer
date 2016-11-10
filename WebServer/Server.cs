@@ -134,6 +134,7 @@ namespace WebServer
                     }
                     else if (requestComponents[0].Equals("POST"))
                     {
+                        DoConsoleTextUpdate(request);
                         builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
                     }
                     else
