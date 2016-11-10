@@ -15,6 +15,7 @@ namespace WebServer
         private TcpClient tcpClient;
         private bool runServer = true;
 
+        // Register event provider
         public event ConsoleTextUpdateEventHandler ConsoleTextUpdate;
         
         public Server()
@@ -33,6 +34,10 @@ namespace WebServer
                 while (runServer)
                 {
                     tcpClient = tcpListener.AcceptTcpClient();
+                    /*
+                     * Spawn a new thread from the thread pool for each new TCP connection. Default thread pool size
+                     * is 25 I think
+                    */
                     ThreadPool.QueueUserWorkItem(AcceptTcpClient, tcpClient);
 
                 }
@@ -69,6 +74,7 @@ namespace WebServer
                     builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
 
                 }
+                    // Serve index.html if '/' is requested, otherwise serve the page if it exists
                 else if (requestComponents[1].Equals("/") || File.Exists(System.AppDomain.CurrentDomain.BaseDirectory + 
                     "\\www\\" + requestComponents[1]))
                 {
@@ -88,6 +94,7 @@ namespace WebServer
                         html = fileReader.ReadToEnd();
                     }
 
+                    // Get the content length of the HTML file (in bytes)
                     int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
 
                     builder.Append("HTTP/1.1 200 OK\r\n");
@@ -95,6 +102,7 @@ namespace WebServer
                     builder.Append("Content-Type: text/html; charset=utf-8\r\n");
                     builder.Append("Content-Length: ").Append(contentLength).Append("\r\n");
                 }
+                    // If the page requested doesn't exist serve the 404 page and error code.
                 else
                 {
                     builder.Append("HTTP/1.1 404 NOT FOUND\r\n");
@@ -108,8 +116,10 @@ namespace WebServer
                 
                 using (StreamWriter networkWriter = new StreamWriter(networkStream))
                 {
+                    // Finalize the response header
                     String responseHeader = builder.ToString();
 
+                    // Have to write the header before the HTML or it doesn't work
                     networkWriter.WriteLine(responseHeader);
                     if (html != null)
                     {
@@ -122,6 +132,11 @@ namespace WebServer
             }
         }
 
+        /* 
+         * Helper method for passing text to the console. Since the methods that need to write text to the console
+         * are in different threads, they cannot directly modify the Text attribute of the TextBox control. The
+         * way around this is to use events (just like the button click events) to pass messages between threads.
+        */ 
         protected virtual void DoConsoleTextUpdate(String s)
         {
             if (ConsoleTextUpdate != null)
@@ -131,6 +146,8 @@ namespace WebServer
         }
     }
 
+
+    // Class to provide event data
     public class ConsoleTextEventArgs : EventArgs
     {
         public String message;
