@@ -36,7 +36,7 @@ namespace WebServer
                     tcpClient = tcpListener.AcceptTcpClient();
                     /*
                      * Spawn a new thread from the thread pool for each new TCP connection. Default thread pool size
-                     * is 25 I think
+                     * is 1024 I think
                     */
                     ThreadPool.QueueUserWorkItem(AcceptTcpClient, tcpClient);
 
@@ -65,10 +65,12 @@ namespace WebServer
 
                 String html = null;
 
+                // Split request by spaces, first word is request type
                 String[] requestComponents = request.Split(' ');
 
                 StringBuilder builder = new StringBuilder();
 
+                // Return status code 501 for methods that do not work
                 if (requestComponents[0] != "GET")
                 {
                     builder.Append("HTTP/1.1 501 NOT IMPLEMENTED\r\n");
@@ -88,6 +90,10 @@ namespace WebServer
                         file = requestComponents[1];
                     }
 
+                    /* 
+                     * Read HTML file into memory, this will read non-text files but images and most other 
+                     * binary files will fail, somehow the bytes get mangled in here
+                     */
                     using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory 
                         + "\\www\\" + file))
                     {
@@ -97,6 +103,7 @@ namespace WebServer
                     // Get the content length of the HTML file (in bytes)
                     int contentLength = System.Text.ASCIIEncoding.ASCII.GetByteCount(html);
 
+                    // Server has hardcoded Content-Type so content other than text will likely not display properly
                     builder.Append("HTTP/1.1 200 OK\r\n");
                     builder.Append("Connection: keep-alive\r\n");
                     builder.Append("Content-Type: text/html; charset=utf-8\r\n");
