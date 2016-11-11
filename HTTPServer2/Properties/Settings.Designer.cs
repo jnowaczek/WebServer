@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace WebServer.Properties
+namespace HTTPServer2.Properties
 {
 
 

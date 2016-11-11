@@ -5,14 +5,12 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace WebServer
+namespace HTTPServer2
 {
     public delegate void ConsoleTextUpdateEventHandler(object sender, ConsoleTextEventArgs e);
 
     class Server
     {
-        private TcpListener tcpListener;
-        private TcpClient tcpClient;
         private bool runServer = true;
 
         // Register event provider
@@ -23,41 +21,111 @@ namespace WebServer
 
         }
 
-        public void StartServer()
+        public void RunServer()
+        {
+            var listener = new HttpListener();
+            listener.Prefixes.Add("http://localhost:8080/");
+            listener.Prefixes.Add("http://127.0.0.1:8080/");
+
+            listener.Start();
+
+            while (runServer)
+            {
+                try
+                {
+                    var context = listener.GetContext();
+                    ThreadPool.QueueUserWorkItem(o => HandleRequest(context));
+                }
+                catch
+                {
+
+                }
+            }
+        }
+
+        private void HandleRequest(object state)
         {
             try
             {
-                var port = 8080;
-                var totalThreads = 0;
+                var context = (HttpListenerContext)state;
 
-                tcpListener = new TcpListener(IPAddress.Any, port);
-                tcpListener.Start();
-
-                while (runServer)
+                if (context.Request.HttpMethod.Equals("GET"))
                 {
-                    tcpClient = tcpListener.AcceptTcpClient();
-                    /*
-                     * Spawn a new thread from the thread pool for each new TCP connection. Default thread pool size
-                     * is 1024 I think
-                    */
-                    ThreadPool.QueueUserWorkItem(AcceptTcpClient, tcpClient);
+                    if (File.Exists(System.AppDomain.CurrentDomain.BaseDirectory
+                            + "\\www\\" + context.Request.RawUrl))
+                    {
+                        context.Response.StatusCode = 200;
+                        context.Response.SendChunked = true;
+                        context.Response.ContentType = "text/html; charset=utf-8";
 
-                    int maxThreads;
-                    int availableThreads;
-                    // Apparently there's no way to discard an out variable you don't want
-                    int dontCare;
+                        var html = "";
 
-                    ThreadPool.GetMaxThreads(out maxThreads, out dontCare);
-                    ThreadPool.GetAvailableThreads(out availableThreads, out dontCare);
+                        using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
+                                + "\\www\\" + context.Request.RawUrl))
+                        {
+                            html = fileReader.ReadToEnd();
+                        }
 
-                    totalThreads += 1;
-                    DoConsoleTextUpdate("Threads available in pool: + " + availableThreads + " out of " + maxThreads
-                        + " total\r\nThreads created so far: " + totalThreads);
+                        var bytes = Encoding.UTF8.GetBytes(html);
+
+                        context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                        context.Response.OutputStream.Flush();
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.SendChunked = true;
+                        context.Response.ContentType = "text/html; charset=utf-8";
+
+                        var html = "";
+
+                        using (StreamReader fileReader = new StreamReader(System.AppDomain.CurrentDomain.BaseDirectory
+                                + "\\www\\404.html"))
+                        {
+                            html = fileReader.ReadToEnd();
+                        }
+
+                        var bytes = Encoding.UTF8.GetBytes(html);
+
+                        context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                        context.Response.OutputStream.Flush();
+                    }
+
+                }
+                else if (context.Request.HttpMethod.Equals("POST"))
+                {
+                    String formData = "";
+
+                    using (StreamReader inputReader = new StreamReader(context.Request.InputStream))
+                    {
+                        formData = inputReader.ReadToEnd();
+                    }
+
+                    context.Response.StatusCode = 303;
+                    context.Response.RedirectLocation = "http://localhost:8080/form.html";
+                    context.Response.ContentLength64 = 0;
+
+                    context.Response.Close();
+
+                    String[] data = formData.Replace('&', '=').Split('=');
+
+                    using (var fileWriter = File.AppendText(System.AppDomain.CurrentDomain.BaseDirectory
+                         + "names.txt"))
+                    {
+                        fileWriter.WriteLine("Name: " + data[1] + " Age: " + data[3] + "\r\n");
+                    }
+
+                        DoConsoleTextUpdate("Name: " + data[1] + " Age: " + data[3]);
+                }
+                else
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.SendChunked = true;
                 }
             }
             catch (Exception e)
             {
-                DoConsoleTextUpdate("Error starting server: " + e.Message);
+                DoConsoleTextUpdate(e.Message);
             }
         }
 
