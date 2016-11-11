@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace HTTPServer2
+namespace WebserverV2
 {
     public delegate void ConsoleTextUpdateEventHandler(object sender, ConsoleTextEventArgs e);
 
